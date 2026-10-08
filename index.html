@@ -32,7 +32,7 @@
     }
 
     .page {
-      width: min(92vw, 1180px);
+      width: 100%;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -43,45 +43,115 @@
     }
 
     .brand {
-      width: min(92vw, 1180px);
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      margin-bottom: 18px;
-      position: relative;
-      z-index: 3;
-    }
-
-    .brand-mark {
-      background: #e1c68e;
-      border-radius: 18px 18px 18px 18px;
-      padding: 12px 26px 10px 22px;
-      font-family: 'Quirks Sans', sans-serif;
-      font-weight: 900;
-      font-size: clamp(2.1rem, 2.5vw, 2.9rem);
-      color: #000;
-      line-height: 1;
-      display: inline-block;
-      transform: rotate(-1.5deg);
-      box-shadow: 0 4px 0 rgba(0,0,0,0.25);
-      border: 2px solid rgba(0,0,0,0.2);
+      display: none;
     }
 
     header {
       text-align: center;
-      margin-bottom: 18px;
+      margin-bottom: 40px;
       z-index: 10;
+      position: relative;
+    }
+
+    .eyes-container {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-bottom: 30px;
+      height: 120px;
+      align-items: center;
+    }
+
+    .eye {
+      width: 90px;
+      height: 90px;
+      background: #d4e4d4;
+      border-radius: 50%;
+      position: relative;
+      box-shadow: inset 0 5px 15px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.15);
+      border: 3px solid rgba(0,0,0,0.1);
+    }
+
+    .eye::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.62);
+      clip-path: ellipse(42% 48% at 38% 38%);
+    }
+
+    .pupil {
+      width: 35px;
+      height: 35px;
+      background: #000000;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.05s ease-out;
+    }
+
+    .pupil::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      top: 6px;
+      left: 6px;
     }
 
     h1 {
       font-size: clamp(3.4rem, 8vw, 7rem);
       line-height: 0.82;
       margin: 0;
-      text-shadow: 4px 4px 0 rgba(0,0,0,0.88);
+      text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
       font-weight: 900;
       letter-spacing: -0.07em;
-      color: #000;
+      color: #4a3f5c;
       transform: scaleY(0.95);
+      font-style: italic;
+      position: relative;
+      display: inline-block;
+      perspective: 1000px;
+    }
+
+    .char {
+      display: inline-block;
+      transition: all 0.3s ease;
+      position: relative;
+      transform-style: preserve-3d;
+    }
+
+    .char.freezing {
+      animation: freezeEffect 0.6s ease forwards;
+    }
+
+    @keyframes freezeEffect {
+      0% {
+        color: #4a3f5c;
+        text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
+        filter: blur(0px);
+      }
+      50% {
+        color: #5a7f9f;
+        text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15), 0 0 10px rgba(100, 150, 255, 0.5);
+      }
+      100% {
+        color: #6ca3d4;
+        text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px rgba(100, 150, 255, 0.8);
+        filter: blur(0.5px);
+        transform: scaleY(1.05);
+      }
+    }
+
+    .char.frozen {
+      color: #6ca3d4;
+      text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px rgba(100, 150, 255, 0.8);
+      filter: blur(0.5px);
     }
 
     main {
@@ -146,12 +216,17 @@
 </head>
 <body>
   <div class="page">
-    <div class="brand">
-      <div class="brand-mark">NESTA</div>
-    </div>
-
     <header>
-      <h1>My Fridge</h1>
+      <div class="eyes-container">
+        <div class="eye">
+          <div class="pupil" id="pupil1"></div>
+        </div>
+        <div class="eye">
+          <div class="pupil" id="pupil2"></div>
+        </div>
+      </div>
+
+      <h1 id="title">My Fridge</h1>
     </header>
 
     <main>
@@ -163,6 +238,50 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
+    const pupil1 = document.getElementById('pupil1');
+    const pupil2 = document.getElementById('pupil2');
+    const eyeContainers = document.querySelectorAll('.eye');
+
+    document.addEventListener('mousemove', (event) => {
+      eyeContainers.forEach((eye, index) => {
+        const pupil = index === 0 ? pupil1 : pupil2;
+        const eyeRect = eye.getBoundingClientRect();
+        const eyeCenterX = eyeRect.left + eyeRect.width / 2;
+        const eyeCenterY = eyeRect.top + eyeRect.height / 2;
+
+        const angle = Math.atan2(event.clientY - eyeCenterY, event.clientX - eyeCenterX);
+        const distance = 27;
+
+        const pupilX = Math.cos(angle) * distance;
+        const pupilY = Math.sin(angle) * distance;
+
+        pupil.style.transform = `translate(calc(-50% + ${pupilX}px), calc(-50% + ${pupilY}px))`;
+      });
+    });
+
+    const titleElement = document.getElementById('title');
+    const text = titleElement.textContent;
+    titleElement.innerHTML = text.split('').map(char => `<span class="char">${char}</span>`).join('');
+    const chars = titleElement.querySelectorAll('.char');
+
+    titleElement.addEventListener('mouseenter', () => {
+      chars.forEach((char, index) => {
+        setTimeout(() => {
+          char.classList.add('freezing');
+          setTimeout(() => {
+            char.classList.remove('freezing');
+            char.classList.add('frozen');
+          }, 300);
+        }, index * 50);
+      });
+    });
+
+    titleElement.addEventListener('mouseleave', () => {
+      chars.forEach(char => {
+        char.classList.remove('freezing', 'frozen');
+      });
+    });
+
     const canvas = document.getElementById('canvas');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x2b2b2d);
