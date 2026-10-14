@@ -15,7 +15,7 @@
       font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
       background: #a7d8f7; /* light blue similar to screenshot */
       color:#000;
-      overflow:hidden;
+      overflow:hidden; /* ensure no scrollbars */
     }
 
     /* subtle paper/crumple texture using layered gradients */
@@ -33,16 +33,29 @@
       z-index:0;
     }
 
+    /* content wrapper which we'll scale so whole composition fits inside viewport */
+    .stage{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform-origin: 0 0; /* we'll translate after scaling */
+      will-change: transform;
+      width:1200px; /* design reference width */
+      height:720px; /* design reference height */
+      margin:0;
+    }
+
     .page{
       position:relative;
-      width:100vw;
-      height:100vh;
+      width:1200px;
+      height:720px;
       display:flex;
       align-items:center;
       justify-content:flex-start;
-      padding-left:6vw; /* space on left like screenshot */
-      padding-right:8vw;
+      padding-left:72px; /* space on left like screenshot */
+      padding-right:72px;
       z-index:1;
+      background:transparent;
     }
 
     .left{
@@ -52,7 +65,7 @@
 
     h1{
       font-weight:900;
-      font-size: clamp(4.2rem, 18vw, 16rem);
+      font-size:220px; /* fixed large size in design units */
       line-height:0.88;
       color:#000;
       letter-spacing:-0.02em;
@@ -74,15 +87,16 @@
     /* right fridge */
     .fridge-wrap{
       position:absolute;
-      right:6vw;
-      top:6vh;
-      width:min(40vw,520px);
-      height:min(86vh,760px);
+      right:72px;
+      top:36px;
+      width:480px;
+      height:648px;
       display:block;
       z-index:1;
       pointer-events:auto;
     }
 
+    /* if user provides an image at assets/fridge.png, it will be shown; otherwise this decorative fridge will remain */
     .fridge{
       position:relative;
       width:100%;
@@ -100,7 +114,6 @@
 
     .fridge .logo{position:absolute;left:28px;top:26%;font-size:14px;color:rgba(0,0,0,0.45);letter-spacing:.12em}
 
-    /* fridge outline on right like screenshot */
     .fridge::after{
       content:"";
       position:absolute;
@@ -114,38 +127,65 @@
       border-bottom-right-radius:4px;
     }
 
+    /* image style when user provides assets/fridge.png */
+    .fridge-img{width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05);}
+
     /* particles from fridge */
     .frag{position:absolute;width:10px;height:10px;background:#000;border-radius:1px;pointer-events:none;animation:frag 900ms cubic-bezier(.2,.8,.2,1) forwards}
     @keyframes frag{0%{transform:translate(0,0) scale(1);opacity:1}80%{transform:translate(var(--fx,80px),var(--fy,-20px)) rotate(var(--frot,90deg)) scale(.8);opacity:.9}100%{transform:translate(calc(var(--fx,120px)),calc(var(--fy,-40px))) scale(.3);opacity:0}}
 
-    /* responsive */
+    /* center the scaled stage */
+    .stage-centered{transform-origin: 0 0;}
+
+    /* responsive fallback */
     @media (max-width:900px){
-      .page{padding-left:4vw}
-      .left{width:60%}
+      h1{font-size:120px}
       .fridge-wrap{display:none}
     }
 
   </style>
 </head>
 <body>
-  <div class="page" role="main">
-    <div class="left">
-      <h1 id="title" aria-label="What's new in my fridge?">
-        <span class="line">What's</span>
-        <span class="line">new</span>
-        <span class="line">in my</span>
-        <span class="line">fridge?</span>
-      </h1>
-    </div>
+  <!-- stage is a fixed-size composition (1200x720 design units). JS will scale it to fit viewport so the entire image fits on screen. -->
+  <div class="stage" id="stage">
+    <div class="page" role="main" aria-label="hero">
+      <div class="left">
+        <h1 id="title" aria-label="What's new in my fridge?">
+          <span class="line">What's</span>
+          <span class="line">new</span>
+          <span class="line">in my</span>
+          <span class="line">fridge?</span>
+        </h1>
+      </div>
 
-    <div class="fridge-wrap" aria-hidden="true">
-      <div class="fridge" id="fridge">
-        <div class="logo">BOSCH</div>
+      <div class="fridge-wrap" aria-hidden="true">
+        <div class="fridge" id="fridge">
+          <!-- If you add an image to assets/fridge.png it will be used here automatically -->
+          <img src="assets/fridge.png" alt="fridge" class="fridge-img" id="fridgeImg" onerror="this.style.display='none'">
+          <div class="logo">BOSCH</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
+    // --- make the fixed-size stage scale so whole composition fits into the viewport ---
+    const stage = document.getElementById('stage');
+    function fitStage(){
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const designW = 1200; // width used in CSS
+      const designH = 720;  // height used in CSS
+      const scale = Math.min(vw / designW, vh / designH);
+      // center the stage in viewport
+      const offsetX = (vw - designW * scale) / 2;
+      const offsetY = (vh - designH * scale) / 2;
+      stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    }
+    window.addEventListener('resize', fitStage);
+    window.addEventListener('orientationchange', fitStage);
+    fitStage();
+
     // split title into characters for per-char effect
     const title = document.getElementById('title');
     const textLines = Array.from(title.querySelectorAll('.line'));
@@ -169,8 +209,9 @@
         f.className='frag';
         f.style.width = size+'px';
         f.style.height = size+'px';
-        f.style.left = (x - size/2)+'px';
-        f.style.top = (y - size/2)+'px';
+        // position relative to viewport (container is body)
+        f.style.left = (x - size/2) + 'px';
+        f.style.top = (y - size/2) + 'px';
         const fx = 30 + Math.random()*160;
         const fy = -80 + Math.random()*120;
         const frot = (Math.random()*360)+'deg';
@@ -196,6 +237,7 @@
         span.style.setProperty('--op',op);
         setTimeout(()=>span.classList.add('active'), i*20);
       });
+      // fragments: compute position of right edge of title in viewport
       const r = title.getBoundingClientRect();
       createFragments(document.body, r.right - 28, r.top + r.height/2, 30, 8);
     });
@@ -246,6 +288,13 @@
     title.addEventListener('blur', ()=>title.dispatchEvent(new Event('mouseleave')));
     fridge.addEventListener('focus', ()=>fridge.dispatchEvent(new Event('mouseenter')));
     fridge.addEventListener('blur', ()=>fridge.dispatchEvent(new Event('mouseleave')));
+
+    // initialize fit on DOMContentLoaded just in case fonts change size
+    window.addEventListener('DOMContentLoaded', ()=>{
+      fitStage();
+      // small delay to ensure layout settled
+      setTimeout(fitStage, 200);
+    });
   </script>
 </body>
 </html>
